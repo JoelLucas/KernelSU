@@ -206,6 +206,8 @@ int ksu_handle_setuid_common(uid_t new_uid, uid_t old_uid, uid_t new_euid,
 int ksu_handle_setuid_common(uid_t new_uid, uid_t old_uid, uid_t new_euid,
 			     uid_t old_euid)
 {
+	pr_info("handle_set{res}uid from %d to %d\n", old_uid, new_uid);
+
 	// if old process is root, ignore it.
 	if (old_uid != 0) {
 		if (ksu_enhanced_security_enabled) {
