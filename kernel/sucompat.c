@@ -134,18 +134,15 @@ int ksu_handle_faccessat(int *dfd, const char __user **filename_user, int *mode,
 	return ksu_sucompat_user_common(filename_user, "faccessat", false);
 }
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0) && defined(CONFIG_KSU_SUSFS)
 int ksu_handle_stat(int *dfd, struct filename **filename, int *flags)
 {
-	const char sh_path[] = "/system/bin/sh";
-	if (unlikely(IS_ERR(filename))
-		return 0;
 	if (!is_su_allowed(filename))
 		return 0;
-
-	if (likely(memcmp((*filename)->name, su, sizeof(su)))) {
+	if (unlikely(IS_ERR(filename))
 		return 0;
-	}
+	if (likely(memcmp((*filename)->name, su, sizeof(su))))
+		return 0;
 
 	pr_info("ksu_handle_stat: su->sh!\n");
 	memcpy((void *)((*filename)->name), sh_path, sizeof(sh_path));
