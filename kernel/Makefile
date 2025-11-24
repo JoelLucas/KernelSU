@@ -24,44 +24,7 @@ ccflags-y += -I$(srctree)/security/selinux -I$(srctree)/security/selinux/include
 ccflags-y += -I$(objtree)/security/selinux -include $(srctree)/include/uapi/asm-generic/errno.h
 
 obj-$(CONFIG_KSU) += kernelsu.o
-
-KDIR := $(KDIR)
-MDIR := $(realpath $(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
-
-# Stop printing unless ddk environment
-ifneq ($(KDIR),)
-$(info -- KDIR: $(KDIR))
-$(info -- MDIR: $(MDIR))
-
-# DDK environment workaround.
-ccflags-y += -DDDK_ENV
-endif
-
-# Check if this is a git repository
-# For in - tree build : check $(srctree) / $(src) /../.git
-# For out - of - tree build : check $(MDIR) /../.git
-ifeq ($(shell test -e $(srctree)/$(src)/../.git && echo "in-tree"),in-tree)
-# In - tree build(git submodule)
-$(shell cd $(srctree)/$(src); /usr/bin/env PATH="$$PATH":/usr/bin:/usr/local/bin [ -f ../.git/shallow ] && git fetch --unshallow)
-KSU_GIT_VERSION := $(shell cd $(srctree)/$(src); /usr/bin/env PATH="$$PATH":/usr/bin:/usr/local/bin git rev-list --count HEAD)
-KSU_GIT_VERSION_VALID := 1
-else ifeq ($(shell test -e $(MDIR)/../.git && echo "out-of-tree"),out-of-tree)
-# Out - of - tree build(standalone repository)
-$(shell cd $(MDIR); /usr/bin/env PATH="$$PATH":/usr/bin:/usr/local/bin [ -f ../.git/shallow ] && git fetch --unshallow)
-KSU_GIT_VERSION := $(shell cd $(MDIR); /usr/bin/env PATH="$$PATH":/usr/bin:/usr/local/bin git rev-list --count HEAD)
-KSU_GIT_VERSION_VALID := 1
-endif
-
-# Calculate version if git version is available
-ifdef KSU_GIT_VERSION_VALID
-$(eval KSU_VERSION=$(shell expr 20000 + $(KSU_GIT_VERSION)))
-$(info -- KernelSU version: $(KSU_VERSION))
-ccflags-y += -DKSU_VERSION=$(KSU_VERSION)
-else
-# If there is no.git directory, use default version
-$(warning "KSU_GIT_VERSION not defined! It is better to make KernelSU a git submodule!")
-ccflags-y += -DKSU_VERSION=16
-endif
+ccflags-y += -DKSU_VERSION=22217
 
 # Checks hooks state
 ifeq ($(CONFIG_KSU_MANUAL_HOOK), y)
@@ -98,6 +61,9 @@ endif
 
 ifeq ($(shell grep -q "int\s\+path_umount" $(srctree)/fs/namespace.c; echo $$?),0)
 ccflags-y += -DKSU_HAS_PATH_UMOUNT
+$(shell sed -i '/^extern void __init mnt_init/a int path_umount(struct path *path, int flags);' $(srctree)/fs/internal.h;)
+$(info -- KernelSU-SusFS: adding 'int path_umount(struct path *path, int flags);' to $(srctree)/fs/internal.h)
+endif
 endif
 
 ifeq ($(shell grep -q "inode_security_struct\s\+\*selinux_inode" $(srctree)/security/selinux/include/objsec.h; echo $$?),0)
@@ -151,11 +117,12 @@ $(info -- Supported KernelSU Manager(s): tiann, rsuntk, 5ec1cff)
 ccflags-y += -Wno-strict-prototypes -Wno-int-conversion -Wno-gcc-compat
 ccflags-y += -Wno-declaration-after-statement -Wno-unused-function -Wno-missing-prototypes
 
-all:
-	make -C $(KDIR) M=$(MDIR) modules
-compdb:
-	python3 $(MDIR)/.vscode/generate_compdb.py -O $(KDIR) $(MDIR)
-clean:
-	make -C $(KDIR) M=$(MDIR) clean
++## For susfs stuff ##
+ifeq ($(shell test -e $(srctree)/fs/susfs.c; echo $$?),0)
+$(eval SUSFS_VERSION=$(shell cat $(srctree)/include/linux/susfs.h | grep -E '^#define SUSFS_VERSION' | cut -d' ' -f3 | sed 's/"//g'))
+$(info -- KernelSU-SusFS Version: $(SUSFS_VERSION))
+else
+$(error -- You have not integrated susfs in your kernel yet. Read: https://gitlab.com/simonpunk/susfs4ksu)
+endif
 
 # Keep a new line here !!Because someone may append config
