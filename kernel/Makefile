@@ -117,7 +117,7 @@ $(info -- Supported KernelSU Manager(s): tiann, rsuntk, 5ec1cff)
 ccflags-y += -Wno-strict-prototypes -Wno-int-conversion -Wno-gcc-compat
 ccflags-y += -Wno-declaration-after-statement -Wno-unused-function -Wno-missing-prototypes
 
-+## For susfs stuff ##
+## For susfs stuff ##
 ifeq ($(shell test -e $(srctree)/fs/susfs.c; echo $$?),0)
 $(eval SUSFS_VERSION=$(shell cat $(srctree)/include/linux/susfs.h | grep -E '^#define SUSFS_VERSION' | cut -d' ' -f3 | sed 's/"//g'))
 $(info -- KernelSU-SusFS Version: $(SUSFS_VERSION))
